@@ -205,6 +205,7 @@ npm run db:migrate
 
 ```bash
 npm run db:seed
+npm run db:seed:players
 ```
 
 ### 6. Run the app
@@ -253,6 +254,7 @@ What they do:
 - `db:push`: pushes the schema directly to the configured database
 - `db:migrate`: creates and applies a Prisma development migration
 - `db:seed`: clears app data and loads demo data
+- `db:seed:players`: replaces only the player pool and auction data while preserving teams, owner accounts, invites, and sessions
 - `db:reseed`: Prisma migration reset followed by seed
 
 ## Seed Data

@@ -37,6 +37,8 @@ export function PlayerPool({
 }: PlayerPoolProps) {
   const selectionBannerRef = useRef<HTMLDivElement | null>(null);
   const previousTurnStateRef = useRef(currentTurnState);
+  const waitingReason =
+    currentTurnState === "waiting" ? "Waiting for the current team." : null;
 
   useEffect(() => {
     const previousState = previousTurnStateRef.current;
@@ -173,7 +175,9 @@ export function PlayerPool({
             </button>
             {!player.isValidForCurrentTurn ? (
               <p className="mt-2 text-xs text-rose">
-                {player.invalidReason ?? "This player does not fit the current roster rules."}
+                {waitingReason ??
+                  player.invalidReason ??
+                  "This player does not fit the current roster rules."}
               </p>
             ) : null}
           </div>

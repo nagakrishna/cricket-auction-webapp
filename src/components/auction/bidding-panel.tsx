@@ -161,7 +161,7 @@ export function BiddingPanel({
           </button>
         ))}
       </div>
-      <div className="mt-4 flex gap-3">
+      <div className="mt-4 flex flex-wrap items-start gap-3">
         <input
           className="w-40 rounded-2xl border border-white/80 bg-white/92 px-4 py-3 text-lg font-semibold text-ink shadow-sm"
           disabled={!canBid}
@@ -179,14 +179,21 @@ export function BiddingPanel({
         >
           Submit bid
         </button>
-        <button
-          className="rounded-2xl border border-amber-300 bg-[linear-gradient(135deg,rgba(255,251,235,1),rgba(254,243,199,0.92))] px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:border-amber-400 hover:bg-amber-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
-          disabled={!canPass}
-          onClick={onPass}
-          type="button"
-        >
-          {hasPassed ? "Passed" : "Pass on player"}
-        </button>
+        <div className="grid gap-2">
+          <button
+            className="rounded-2xl border border-amber-300 bg-[linear-gradient(135deg,rgba(255,251,235,1),rgba(254,243,199,0.92))] px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:border-amber-400 hover:bg-amber-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
+            disabled={!canPass}
+            onClick={onPass}
+            type="button"
+          >
+            {hasPassed ? "Passed" : "Pass on player"}
+          </button>
+          {canPass ? (
+            <p className="max-w-xs text-xs font-semibold leading-5 text-amber-900">
+              Passing means your team can no longer participate in this player auction during the current round.
+            </p>
+          ) : null}
+        </div>
       </div>
       <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
         Minimum valid bid right now: {minimumNextBid}

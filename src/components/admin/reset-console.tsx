@@ -33,6 +33,13 @@ const RESET_PRESETS: ResetPresetCard[] = [
     keeps: "Current auction record, settings, teams, players, owners, invites.",
   },
   {
+    preset: "PLAYERS_ONLY_RESEED",
+    label: "Refresh players from CSV",
+    summary: "Replace the player pool and rebuild a fresh auction without deleting teams, owner accounts, or invites.",
+    deletes: "Players, auctions, rounds, bids, roster entries, assignments, auction logs, live connections.",
+    keeps: "Teams, owner accounts, invite links, active sessions.",
+  },
+  {
     preset: "FULL_RESEED",
     label: "Full reseed",
     summary: "Wipe all application data and restore the default seeded baseline.",

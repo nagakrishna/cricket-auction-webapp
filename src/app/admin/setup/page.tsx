@@ -149,7 +149,7 @@ export default async function AuctionSetupPage() {
       min: 0,
       max: 12,
       label: "Max batsmen",
-      description: "The maximum number of batsmen a team can carry at any point in a valid roster.",
+      description: "The maximum number of batsmen a team can normally carry. One role may exceed its max by exactly one bench player.",
     },
     {
       name: "minBowlers",
@@ -165,7 +165,7 @@ export default async function AuctionSetupPage() {
       min: 0,
       max: 12,
       label: "Max bowlers",
-      description: "The maximum number of bowlers a team can carry at any point in a valid roster.",
+      description: "The maximum number of bowlers a team can normally carry. One role may exceed its max by exactly one bench player.",
     },
     {
       name: "minAllRounders",
@@ -181,7 +181,7 @@ export default async function AuctionSetupPage() {
       min: 0,
       max: 12,
       label: "Max all-rounders",
-      description: "The maximum number of all-rounders a team can carry at any point in a valid roster.",
+      description: "The maximum number of all-rounders a team can normally carry. One role may exceed its max by exactly one bench player.",
     },
     {
       name: "minWicketkeepers",
@@ -197,7 +197,7 @@ export default async function AuctionSetupPage() {
       min: 0,
       max: 12,
       label: "Max wicketkeepers",
-      description: "The maximum number of wicketkeepers a team can carry at any point in a valid roster.",
+      description: "The maximum number of wicketkeepers a team can normally carry. One role may exceed its max by exactly one bench player.",
     },
   ] as const;
 

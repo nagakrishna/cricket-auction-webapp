@@ -16,7 +16,8 @@
     "db:migrate": "prisma migrate dev",
     "db:reseed": "prisma migrate reset --force",
     "db:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "db:seed:players": "tsx prisma/seed-players.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

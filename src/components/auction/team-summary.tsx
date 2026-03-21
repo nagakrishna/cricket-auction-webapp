@@ -1,4 +1,6 @@
 import type { AuctionSnapshot } from "@/lib/realtime/events";
+import { getBenchRole } from "@/server/auction/rules";
+import type { PlayerRole } from "@prisma/client";
 
 export function TeamSummary({
   snapshot,
@@ -9,18 +11,43 @@ export function TeamSummary({
 }) {
   const team = snapshot.leaderboard.find((entry) => entry.teamId === teamId);
   const roster = snapshot.rosterEntries.filter((entry) => entry.teamId === teamId);
+  const roleCounts = roster.reduce<Record<PlayerRole, number>>(
+    (counts, entry) => {
+      counts[entry.role] += 1;
+      return counts;
+    },
+    {
+      BATSMAN: 0,
+      BOWLER: 0,
+      ALL_ROUNDER: 0,
+      WICKETKEEPER: 0,
+    },
+  );
 
   if (!team) {
     return null;
   }
 
   const requirementRows = [
-    ["Batsmen", team.roleCounts.BATSMAN, snapshot.settings.minBatsmen, snapshot.settings.maxBatsmen],
-    ["Bowlers", team.roleCounts.BOWLER, snapshot.settings.minBowlers, snapshot.settings.maxBowlers],
-    ["All-rounders", team.roleCounts.ALL_ROUNDER, snapshot.settings.minAllRounders, snapshot.settings.maxAllRounders],
-    ["Wicketkeepers", team.roleCounts.WICKETKEEPER, snapshot.settings.minWicketkeepers, snapshot.settings.maxWicketkeepers],
+    ["Batsmen", roleCounts.BATSMAN, snapshot.settings.minBatsmen, snapshot.settings.maxBatsmen],
+    ["Bowlers", roleCounts.BOWLER, snapshot.settings.minBowlers, snapshot.settings.maxBowlers],
+    ["All-rounders", roleCounts.ALL_ROUNDER, snapshot.settings.minAllRounders, snapshot.settings.maxAllRounders],
+    ["Wicketkeepers", roleCounts.WICKETKEEPER, snapshot.settings.minWicketkeepers, snapshot.settings.maxWicketkeepers],
   ] as const;
   const remainingSlots = Math.max(snapshot.settings.rosterSize - team.players, 0);
+  const benchRole = getBenchRole(snapshot.settings, roleCounts);
+  const benchRoleLabelMap = {
+    BATSMAN: "Batsmen",
+    BOWLER: "Bowlers",
+    ALL_ROUNDER: "All-rounders",
+    WICKETKEEPER: "Wicketkeepers",
+  } as const;
+  const benchRoleSingularLabelMap = {
+    BATSMAN: "Batsman",
+    BOWLER: "Bowler",
+    ALL_ROUNDER: "All-rounder",
+    WICKETKEEPER: "Wicketkeeper",
+  } as const;
 
   return (
     <section className="rounded-[1.75rem] border border-turf/20 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(240,249,244,0.96))] p-5 shadow-panel backdrop-blur">
@@ -78,6 +105,24 @@ export function TeamSummary({
               </h4>
             </div>
           </div>
+          {benchRole ? (
+            <div className="mt-4 rounded-[1.4rem] border border-amber-300/80 bg-[linear-gradient(135deg,rgba(255,247,237,0.98),rgba(254,240,138,0.20))] px-4 py-4 shadow-[0_14px_28px_rgba(245,158,11,0.14)]">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-amber-100 px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-amber-800">
+                  Bench Player Active
+                </span>
+                <span className="rounded-full bg-white/85 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-amber-900">
+                  {benchRoleLabelMap[benchRole]}
+                </span>
+              </div>
+              <p className="mt-3 text-sm font-semibold leading-6 text-amber-950">
+                You are carrying one extra {benchRoleSingularLabelMap[benchRole]} as your bench player.
+              </p>
+              <p className="mt-2 text-xs leading-5 text-amber-900/80">
+                Only one role can exceed its max by one. All other role minimums and maximums still apply.
+              </p>
+            </div>
+          ) : null}
           <div className="mt-3 grid gap-2">
             {requirementRows.map(([label, current, min, max]) => {
               const belowMinimum = current < min;

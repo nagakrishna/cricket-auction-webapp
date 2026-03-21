@@ -1177,8 +1177,8 @@ export async function getAuctionSnapshot(): Promise<AuctionSnapshot> {
     })),
     availablePlayers: availablePlayers.map((entry) => {
       const validity =
-        auction.turnType === "BIDDING_NOMINATION"
-          ? { valid: true, reason: null }
+        auction.turnType === "BIDDING_NOMINATION" && auction.currentTurnTeamId
+          ? validateRosterPick(auction.settings, currentTurnRoster, entry.player.role)
           : auction.turnType === "SNAKE_PICK" && auction.currentTurnTeamId
             ? validateRosterPick(auction.settings, currentTurnRoster, entry.player.role)
             : { valid: false, reason: "Waiting for the current team." };

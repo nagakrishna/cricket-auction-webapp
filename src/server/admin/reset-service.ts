@@ -23,14 +23,14 @@ const DEFAULT_TIMERS = {
 const DEFAULT_SETTINGS = {
   totalTeams: 10,
   rosterSize: 12,
-  minBatsmen: 4,
-  maxBatsmen: 6,
+  minBatsmen: 2,
+  maxBatsmen: 4,
   minBowlers: 3,
-  maxBowlers: 5,
-  minAllRounders: 2,
+  maxBowlers: 6,
+  minAllRounders: 1,
   maxAllRounders: 4,
   minWicketkeepers: 1,
-  maxWicketkeepers: 2,
+  maxWicketkeepers: 1,
 } as const;
 
 const TEAM_SEEDS = [
@@ -287,7 +287,7 @@ export async function resetLiveAuctionProgress() {
 
     const players = await tx.player.findMany({
       select: { id: true },
-      orderBy: { rankingScore: "desc" },
+      orderBy: { rankingScore: "asc" },
     });
 
     if (players.length > 0) {
@@ -318,6 +318,51 @@ export async function resetLiveAuctionProgress() {
     return {
       preset: "LIVE_PROGRESS" as const,
       auctionName: auction.name,
+    };
+  });
+}
+
+export async function reseedPlayersOnly(db: PrismaClient = prisma) {
+  return db.$transaction(async (tx) => {
+    await tx.realtimeConnection.deleteMany();
+    await tx.auditLog.deleteMany();
+    await tx.bid.deleteMany();
+    await tx.teamRosterEntry.deleteMany();
+    await tx.auctionRound.deleteMany();
+    await tx.auctionPlayer.deleteMany();
+    await tx.auctionSettings.deleteMany();
+    await tx.auction.deleteMany();
+    await tx.player.deleteMany();
+
+    const players = loadSeedPlayers();
+
+    for (const player of players) {
+      await tx.player.create({
+        data: player,
+      });
+    }
+
+    const auction = await createFreshAuction(tx, { name: DEFAULT_AUCTION_NAME });
+
+    await tx.auditLog.create({
+      data: {
+        auctionId: auction.id,
+        action: "AUCTION_STARTED",
+        entityType: "auction",
+        entityId: auction.id,
+        message: "Player pool refreshed from seed CSV while preserving teams and owner accounts.",
+        metadata: {
+          totalPlayers: players.length,
+          preservedTeams: true,
+          preservedOwners: true,
+        },
+      },
+    });
+
+    return {
+      preset: "PLAYERS_ONLY_RESEED" as const,
+      auctionName: auction.name,
+      totalPlayers: players.length,
     };
   });
 }
@@ -362,6 +407,8 @@ export async function runAdminReset(input: unknown) {
       return resetCurrentAuction();
     case "LIVE_PROGRESS":
       return resetLiveAuctionProgress();
+    case "PLAYERS_ONLY_RESEED":
+      return reseedPlayersOnly();
     case "FULL_RESEED":
       return fullReseed();
     default: {

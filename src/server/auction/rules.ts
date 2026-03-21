@@ -5,9 +5,38 @@ import type {
   TeamRosterEntry,
 } from "@prisma/client";
 
+type RosterRuleSettings = Pick<
+  AuctionSettings,
+  | "rosterSize"
+  | "minBatsmen"
+  | "maxBatsmen"
+  | "minBowlers"
+  | "maxBowlers"
+  | "minAllRounders"
+  | "maxAllRounders"
+  | "minWicketkeepers"
+  | "maxWicketkeepers"
+>;
+
+const playerRoles = [
+  "BATSMAN",
+  "BOWLER",
+  "ALL_ROUNDER",
+  "WICKETKEEPER",
+] as const satisfies readonly PlayerRole[];
+
 const roleMap: Record<
   PlayerRole,
-  { min: keyof AuctionSettings; max: keyof AuctionSettings }
+  {
+    min: keyof Pick<
+      RosterRuleSettings,
+      "minBatsmen" | "minBowlers" | "minAllRounders" | "minWicketkeepers"
+    >;
+    max: keyof Pick<
+      RosterRuleSettings,
+      "maxBatsmen" | "maxBowlers" | "maxAllRounders" | "maxWicketkeepers"
+    >;
+  }
 > = {
   BATSMAN: { min: "minBatsmen", max: "maxBatsmen" },
   BOWLER: { min: "minBowlers", max: "maxBowlers" },
@@ -26,8 +55,20 @@ export function buildRoleCounts(
   };
 }
 
+export function getBenchRole(
+  settings: RosterRuleSettings,
+  roleCounts: Record<PlayerRole, number>,
+): PlayerRole | null {
+  const exceededRoles = playerRoles.filter((role) => {
+    const { max } = roleMap[role];
+    return roleCounts[role] === Number(settings[max]) + 1;
+  });
+
+  return exceededRoles.length === 1 ? exceededRoles[0] : null;
+}
+
 export function validateRosterPick(
-  settings: AuctionSettings,
+  settings: RosterRuleSettings,
   rosterEntries: Array<TeamRosterEntry & { player: Pick<Player, "role"> }>,
   nextRole: PlayerRole,
 ) {
@@ -38,10 +79,27 @@ export function validateRosterPick(
   const counts = buildRoleCounts(rosterEntries);
   counts[nextRole] += 1;
 
-  const { max } = roleMap[nextRole];
+  const exceededRoles = playerRoles.filter((role) => {
+    const { max } = roleMap[role];
+    return counts[role] > Number(settings[max]);
+  });
 
-  if (counts[nextRole] > Number(settings[max])) {
-    return { valid: false, reason: `${nextRole} maximum reached.` };
+  if (exceededRoles.length > 1) {
+    return {
+      valid: false,
+      reason: "Only one role may exceed its max as the bench player.",
+    };
+  }
+
+  if (exceededRoles.length === 1) {
+    const benchRole = exceededRoles[0];
+    const { max } = roleMap[benchRole];
+    if (counts[benchRole] > Number(settings[max]) + 1) {
+      return {
+        valid: false,
+        reason: `${benchRole} bench limit reached.`,
+      };
+    }
   }
 
   const remainingSlots = settings.rosterSize - rosterEntries.length - 1;

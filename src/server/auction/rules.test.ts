@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { AuctionSettings, PlayerRole, TeamRosterEntry } from "@prisma/client";
 
-import { validateRosterPick } from "@/server/auction/rules";
+import { getBenchRole, validateRosterPick } from "@/server/auction/rules";
 
 function createSettings(overrides: Partial<AuctionSettings> = {}): AuctionSettings {
   return {
@@ -54,13 +54,44 @@ test("prevents picks once the roster is full", () => {
   assert.equal(result.reason, "Roster is already full.");
 });
 
-test("prevents picks that exceed a role maximum", () => {
+test("allows one role to exceed its max by one bench player", () => {
   const settings = createSettings({ maxBatsmen: 1 });
   const rosterEntries = [createRosterEntry("BATSMAN", 1)];
 
   const result = validateRosterPick(settings, rosterEntries, "BATSMAN");
+  assert.equal(result.valid, true);
+  assert.equal(result.reason, null);
+});
+
+test("prevents picks that exceed the same role max by more than one bench player", () => {
+  const settings = createSettings({ maxBatsmen: 1 });
+  const rosterEntries = [
+    createRosterEntry("BATSMAN", 1),
+    createRosterEntry("BATSMAN", 2),
+  ];
+
+  const result = validateRosterPick(settings, rosterEntries, "BATSMAN");
   assert.equal(result.valid, false);
-  assert.equal(result.reason, "BATSMAN maximum reached.");
+  assert.equal(result.reason, "BATSMAN bench limit reached.");
+});
+
+test("prevents picks that would put two roles above their max", () => {
+  const settings = createSettings({
+    rosterSize: 5,
+    maxBatsmen: 1,
+    maxBowlers: 1,
+    minBatsmen: 0,
+    minBowlers: 0,
+  });
+  const rosterEntries = [
+    createRosterEntry("BATSMAN", 1),
+    createRosterEntry("BATSMAN", 2),
+    createRosterEntry("BOWLER", 3),
+  ];
+
+  const result = validateRosterPick(settings, rosterEntries, "BOWLER");
+  assert.equal(result.valid, false);
+  assert.equal(result.reason, "Only one role may exceed its max as the bench player.");
 });
 
 test("prevents picks that make the remaining minimums impossible", () => {
@@ -92,4 +123,30 @@ test("allows valid picks that keep the roster satisfiable", () => {
   const result = validateRosterPick(settings, rosterEntries, "BOWLER");
   assert.equal(result.valid, true);
   assert.equal(result.reason, null);
+});
+
+test("derives the active bench role when exactly one role is at max plus one", () => {
+  const settings = createSettings({ maxBowlers: 2 });
+
+  const benchRole = getBenchRole(settings, {
+    BATSMAN: 1,
+    BOWLER: 3,
+    ALL_ROUNDER: 0,
+    WICKETKEEPER: 0,
+  });
+
+  assert.equal(benchRole, "BOWLER");
+});
+
+test("returns no bench role when no role exceeds its max", () => {
+  const settings = createSettings();
+
+  const benchRole = getBenchRole(settings, {
+    BATSMAN: 1,
+    BOWLER: 1,
+    ALL_ROUNDER: 1,
+    WICKETKEEPER: 0,
+  });
+
+  assert.equal(benchRole, null);
 });

@@ -154,10 +154,18 @@ export async function resetAdminDataAction(
 
     return {
       ok: true,
-      message:
-        result.preset === "CURRENT_AUCTION"
-          ? `Current auction reset. Fresh auction ready: ${result.auctionName}.`
-          : `Live auction progress reset for ${result.auctionName}.`,
+      message: (() => {
+        switch (result.preset) {
+          case "CURRENT_AUCTION":
+            return `Current auction reset. Fresh auction ready: ${result.auctionName}.`;
+          case "LIVE_PROGRESS":
+            return `Live auction progress reset for ${result.auctionName}.`;
+          case "PLAYERS_ONLY_RESEED":
+            return `Player pool refreshed for ${result.auctionName}. Teams and owner accounts were preserved.`;
+          default:
+            return "Reset completed.";
+        }
+      })(),
     };
   } catch (error) {
     return {

@@ -3,6 +3,7 @@ import { z } from "zod";
 export const adminResetPresetSchema = z.enum([
   "CURRENT_AUCTION",
   "LIVE_PROGRESS",
+  "PLAYERS_ONLY_RESEED",
   "FULL_RESEED",
 ]);
 
