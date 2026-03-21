@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --font-heading: "Georgia", "Times New Roman", serif;
+  --font-body:
+    "Helvetica Neue", "Segoe UI", "Arial", -apple-system, BlinkMacSystemFont,
+    sans-serif;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(238, 150, 75, 0.2), transparent 32%),
+    radial-gradient(circle at top right, rgba(28, 124, 84, 0.18), transparent 28%),
+    linear-gradient(180deg, #f7f4ea 0%, #efe8d8 100%);
+  color: #081420;
+  font-family: var(--font-body);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translate3d(var(--confetti-x-start, 0), -4rem, 0) rotate(0deg);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 0.95;
+  }
+
+  100% {
+    transform: translate3d(var(--confetti-x-end, 0), 135vh, 0)
+      rotate(var(--confetti-spin, 540deg));
+    opacity: 0;
+  }
+}
+
+@keyframes confetti-wobble {
+  0% {
+    transform: translateX(-8px) rotate(-10deg) scale(0.96);
+  }
+
+  50% {
+    transform: translateX(8px) rotate(10deg) scale(1.06);
+  }
+
+  100% {
+    transform: translateX(-6px) rotate(-6deg) scale(0.98);
+  }
+}
