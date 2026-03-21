@@ -28,7 +28,6 @@ import { validateRosterPick, buildRoleCounts } from "@/server/auction/rules";
 import {
   buildSnakeDraftInitialOrder,
   findHighestRankedValidAutoPick,
-  getBiddingNominationTurn,
   getNextEligibleBiddingNominationTurn,
   getSnakeDraftCycleNumber,
   getSnakeDraftTurn,
@@ -993,7 +992,7 @@ export async function getAuctionSnapshot(): Promise<AuctionSnapshot> {
     orderBy: [
       {
         player: {
-          rankingScore: "desc",
+          rankingScore: "asc",
         },
       },
       {
@@ -2972,7 +2971,7 @@ async function processExpiredTimersForAuction(
       },
       orderBy: {
         player: {
-          rankingScore: "desc",
+          rankingScore: "asc",
         },
       },
     });

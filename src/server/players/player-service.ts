@@ -47,7 +47,7 @@ export async function listPlayers() {
           }
         : false,
     },
-    orderBy: [{ rankingScore: "desc" }, { name: "asc" }],
+    orderBy: [{ rankingScore: "asc" }, { name: "asc" }],
   });
 
   return players.map((player) => ({

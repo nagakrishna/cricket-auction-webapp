@@ -205,9 +205,9 @@ test("auto-pick chooses the highest-ranked valid available player", () => {
     createSettings(),
     [createRosterEntry("BATSMAN", 1)],
     [
-      createAvailablePlayer("player-1", "BATSMAN", 99),
-      createAvailablePlayer("player-2", "BOWLER", 95),
-      createAvailablePlayer("player-3", "ALL_ROUNDER", 90),
+      createAvailablePlayer("player-2", "BOWLER", 2),
+      createAvailablePlayer("player-3", "ALL_ROUNDER", 3),
+      createAvailablePlayer("player-1", "BATSMAN", 1),
     ],
   );
 

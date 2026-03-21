@@ -9,7 +9,6 @@ import {
   undoLastAdminInterventionAction,
 } from "@/app/admin/_actions/actions";
 import { AdminLiveStatePanel } from "@/components/admin/admin-live-state-panel";
-import { OrderBoard } from "@/components/auction/order-board";
 import { TeamPicksBoard } from "@/components/auction/team-picks-board";
 import { Panel } from "@/components/ui/panel";
 import {

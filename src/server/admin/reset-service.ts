@@ -78,8 +78,6 @@ function loadSeedPlayers() {
     rankingScore: string;
   }>;
 
-  const highestRank = rows.length;
-
   return rows.map((row) => {
     const rankingRank = Number.parseInt(row.rankingScore, 10);
 
@@ -91,8 +89,7 @@ function loadSeedPlayers() {
       name: row.name.trim(),
       role: normalizePlayerRole(row.role),
       iplTeam: row.iplTeam.trim(),
-      // Seed files use "1 = best rank", while the app prefers larger scores.
-      rankingScore: highestRank - rankingRank + 1,
+      rankingScore: rankingRank,
     };
   });
 }
@@ -143,7 +140,7 @@ async function createFreshAuction(db: DbClient, input?: { name?: string }) {
   const auctionName = await buildUniqueAuctionName(db, input?.name?.trim() || DEFAULT_AUCTION_NAME);
   const players = await db.player.findMany({
     orderBy: {
-      rankingScore: "desc",
+      rankingScore: "asc",
     },
   });
 

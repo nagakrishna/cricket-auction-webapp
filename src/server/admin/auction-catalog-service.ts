@@ -128,7 +128,7 @@ export async function createAuctionSeason(input: {
   const latestAuction = await getAuctionAdminData();
   const players = await prisma.player.findMany({
     orderBy: {
-      rankingScore: "desc",
+      rankingScore: "asc",
     },
   });
 

@@ -39,7 +39,7 @@ export default function RankingsPage() {
             + IPL team and updated in place.
           </p>
           <div className="mt-4 rounded-2xl bg-white px-4 py-3 text-xs text-slate-500">
-            Tip: higher ranking scores are favored by snake auto-pick when a team times out and multiple roster-valid players are available.
+            Tip: lower ranking numbers are favored by snake auto-pick when a team times out and multiple roster-valid players are available.
           </div>
         </div>
       </div>
