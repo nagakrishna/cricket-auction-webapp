@@ -111,9 +111,17 @@ export default async function AuctionSetupPage() {
       description: "How long each team gets to make its snake draft pick before auto-pick logic runs.",
     },
     {
-      name: "auctionPlayers",
-      value: auction.biddingRoundSize,
+      name: "startingBidAmount",
+      value: auction.startingBidAmount ?? 30,
       min: 1,
+      max: 5000,
+      label: "Starting bid amount",
+      description: "Opening bid value used automatically when a player is nominated for bidding.",
+    },
+    {
+      name: "auctionPlayers",
+      value: Math.max(3, auction.biddingRoundSize),
+      min: 3,
       max: 50,
       label: "Bidding picks per team",
       description:
@@ -380,6 +388,17 @@ export default async function AuctionSetupPage() {
             enforced by the server during bidding and drafting.
           </p>
           <form action={updateSettingsAction} className="grid gap-4 md:grid-cols-2">
+            <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
+              <span className="flex items-center gap-3">
+                <input
+                  defaultChecked={auction.allowPassOnPlayer ?? false}
+                  name="allowPassOnPlayer"
+                  type="checkbox"
+                  value="true"
+                />
+                Allow pass on player during bidding
+              </span>
+            </label>
             {settingsFields.map((field) => (
               <label key={field.name} className="grid gap-2 text-sm font-medium text-slate-700">
                 <span className="flex items-center gap-2">

@@ -62,7 +62,8 @@ type PersistedOrderRow = {
 type UndoAdminInterventionType =
   | "REOPEN_NOMINATION"
   | "REOPEN_BIDDING"
-  | "MANUAL_NOMINATION";
+  | "MANUAL_NOMINATION"
+  | "OWNER_NOMINATION";
 
 type UndoableAdminIntervention = {
   logId: string;
@@ -80,6 +81,14 @@ type CorrectableLastPick = {
   phase: "BIDDING" | "SNAKE";
 };
 
+function getAllowPassOnPlayer(auction: AuctionWithSettings) {
+  return (auction as unknown as { allowPassOnPlayer?: boolean }).allowPassOnPlayer ?? false;
+}
+
+function getStartingBidAmount(auction: AuctionWithSettings) {
+  return (auction as unknown as { startingBidAmount?: number }).startingBidAmount ?? 30;
+}
+
 function addSeconds(base: Date, seconds: number) {
   return new Date(base.getTime() + seconds * 1000);
 }
@@ -96,7 +105,8 @@ function parseUndoType(value: Prisma.JsonValue | undefined): UndoAdminInterventi
   if (
     value === "REOPEN_NOMINATION" ||
     value === "REOPEN_BIDDING" ||
-    value === "MANUAL_NOMINATION"
+    value === "MANUAL_NOMINATION" ||
+    value === "OWNER_NOMINATION"
   ) {
     return value;
   }
@@ -1140,6 +1150,8 @@ export async function getAuctionSnapshot(): Promise<AuctionSnapshot> {
       biddingTimerSeconds: auction.biddingTimerSeconds,
       selectionTimerSeconds: auction.selectionTimerSeconds,
       snakeTimerSeconds: auction.snakeTimerSeconds,
+      allowPassOnPlayer: getAllowPassOnPlayer(auction),
+      startingBidAmount: getStartingBidAmount(auction),
       minBatsmen: auction.settings.minBatsmen,
       maxBatsmen: auction.settings.maxBatsmen,
       minBowlers: auction.settings.minBowlers,
@@ -1594,6 +1606,8 @@ export async function placeBid(actorId: string, roundId: string, amount: number)
         },
         select: {
           amount: true,
+          teamId: true,
+          createdAt: true,
         },
       });
 
@@ -1601,6 +1615,19 @@ export async function placeBid(actorId: string, roundId: string, amount: number)
         acceptedBidAmounts.length > 0
           ? Math.max(...acceptedBidAmounts.map((bid) => bid.amount))
           : null;
+      const latestAcceptedBid = getHighestAcceptedBid(
+        acceptedBidAmounts.map((bid) => ({
+          ...bid,
+          wasAccepted: true,
+        })),
+      );
+
+      if (latestAcceptedBid?.teamId === team.id) {
+        return reject(
+          "The team holding the latest accepted bid must wait for another team to bid.",
+          "LATEST_BIDDER_BLOCKED",
+        );
+      }
 
       if (!isBidHigherThanCurrentHighest(currentHighestBid, values.amount)) {
         return reject(
@@ -1739,6 +1766,10 @@ export async function passOnBid(actorId: string, roundId: string) {
 
       if (!(await assertParticipatingTeam(tx, auction, team.id))) {
         return { ok: false as const, error: "Your team is not part of this auction configuration." };
+      }
+
+      if (!getAllowPassOnPlayer(auction)) {
+        return { ok: false as const, error: "Passing on a player is disabled for this auction." };
       }
 
       if (!round.nominatedPlayerId || !round.nominatedPlayer) {
@@ -1995,6 +2026,7 @@ export async function nominatePlayer(
       }
 
       const bidDeadlineAt = addSeconds(new Date(), auction.biddingTimerSeconds);
+      const openingBidAmount = getStartingBidAmount(auction);
 
       await tx.auctionRound.update({
         where: { id: round.id },
@@ -2029,7 +2061,7 @@ export async function nominatePlayer(
           roundId: round.id,
           teamId: actingTeamId,
           userId: actorId,
-          amount: 1,
+          amount: openingBidAmount,
           wasAccepted: true,
         },
       });
@@ -2040,7 +2072,7 @@ export async function nominatePlayer(
         action: "BIDDING_ROUND_STARTED",
         entityType: "auction_round",
         entityId: round.id,
-        message: `${nominatedPlayer.player.name} was nominated for bidding and opened at 1 by ${actingTeamName}.`,
+        message: `${nominatedPlayer.player.name} was nominated for bidding and opened at ${openingBidAmount} by ${actingTeamName}.`,
         metadata: {
           nominatedPlayerId: nominatedPlayer.playerId,
           nominatingTeamId: actingTeamId,
@@ -2049,35 +2081,37 @@ export async function nominatePlayer(
         },
       }, tx);
 
-      if (source === "ADMIN") {
-        await writeAuditLog({
-          auctionId: auction.id,
-          actorId,
-          action: "ADMIN_INTERVENTION",
-          entityType: "auction_round",
-          entityId: round.id,
-          message: `Admin manually nominated ${nominatedPlayer.player.name} and reopened bidding.`,
-          metadata: {
-            undoable: true,
-            undoType: "MANUAL_NOMINATION",
-            undoRoundId: round.id,
-            nominatedPlayerId: nominatedPlayer.playerId,
-            nominatingTeamId: actingTeamId,
-          },
-        }, tx);
-      }
-
       await writeAuditLog({
         auctionId: auction.id,
         actorId,
         action: "BID_ACCEPTED",
         entityType: "auction_round",
         entityId: round.id,
-        message: `${actingTeamName} opened bidding at 1 on ${nominatedPlayer.player.name}.`,
+        message: `${actingTeamName} opened bidding at ${openingBidAmount} on ${nominatedPlayer.player.name}.`,
         metadata: {
           teamId: actingTeamId,
-          amount: 1,
+          amount: openingBidAmount,
           source: "OPENING_BID",
+        },
+      }, tx);
+
+      await writeAuditLog({
+        auctionId: auction.id,
+        actorId,
+        action: "ADMIN_INTERVENTION",
+        entityType: "auction_round",
+        entityId: round.id,
+        message:
+          source === "ADMIN"
+            ? `Admin manually nominated ${nominatedPlayer.player.name} and reopened bidding.`
+            : `Owner nomination of ${nominatedPlayer.player.name} can be undone until the next meaningful action.`,
+        metadata: {
+          undoable: true,
+          undoType: source === "ADMIN" ? "MANUAL_NOMINATION" : "OWNER_NOMINATION",
+          undoRoundId: round.id,
+          nominatedPlayerId: nominatedPlayer.playerId,
+          nominatingTeamId: actingTeamId,
+          openingBidAmount,
         },
       }, tx);
 
@@ -2356,14 +2390,14 @@ export async function getUndoableAdminIntervention(): Promise<UndoableAdminInter
     return null;
   }
 
-  if (undoType === "MANUAL_NOMINATION") {
+  if (undoType === "MANUAL_NOMINATION" || undoType === "OWNER_NOMINATION") {
     const safeOpeningState =
       activeRound.status === "ACTIVE" &&
       activeRound.turnType === "BIDDING" &&
       activeRound.nominatedPlayerId !== null &&
       activeRound.bids.length === 1 &&
       activeRound.bids[0]?.wasAccepted === true &&
-      activeRound.bids[0]?.amount === 1;
+      activeRound.bids[0]?.amount === getStartingBidAmount(auction);
 
     if (!safeOpeningState) {
       return null;
@@ -2372,7 +2406,7 @@ export async function getUndoableAdminIntervention(): Promise<UndoableAdminInter
     return {
       logId: log.id,
       roundId: activeRound.id,
-      label: "Undo manual nomination",
+      label: undoType === "MANUAL_NOMINATION" ? "Undo manual nomination" : "Undo owner nomination",
       undoType,
     };
   }
@@ -2438,7 +2472,10 @@ export async function undoLastAdminIntervention(actorId: string) {
         throw new Error("Only the current round can be undone.");
       }
 
-      if (undoable.undoType === "MANUAL_NOMINATION") {
+      if (
+        undoable.undoType === "MANUAL_NOMINATION" ||
+        undoable.undoType === "OWNER_NOMINATION"
+      ) {
         await tx.bid.deleteMany({
           where: {
             roundId: round.id,
@@ -2455,8 +2492,11 @@ export async function undoLastAdminIntervention(actorId: string) {
             nominatedPlayerId: null,
             bidDeadlineAt: null,
             selectionDeadlineAt: null,
-            manualReason: "Nominating team did not nominate a player before timeout.",
-            notes: "Admin manual nomination was undone.",
+            manualReason: null,
+            notes:
+              undoable.undoType === "MANUAL_NOMINATION"
+                ? "Admin manual nomination was undone."
+                : "Owner nomination was undone by admin.",
             endedAt: null,
             resolvedAt: null,
           },
@@ -2469,7 +2509,7 @@ export async function undoLastAdminIntervention(actorId: string) {
           data: {
             status: "LIVE",
             phase: "BIDDING",
-            turnType: "MANUAL_RESOLUTION",
+            turnType: "BIDDING_NOMINATION",
             currentTurnTeamId: round.nominatingTeamId,
             biddingPlayerDeadlineAt: null,
           },

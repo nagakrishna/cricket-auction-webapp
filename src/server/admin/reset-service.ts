@@ -15,9 +15,14 @@ export const DEFAULT_AUCTION_NAME = "Cricket Auction MVP";
 const DEFAULT_ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? "admin@auction.local";
 const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "change-me";
 const DEFAULT_TIMERS = {
-  biddingTimerSeconds: 60,
+  biddingTimerSeconds: 30,
   selectionTimerSeconds: 60,
   snakeTimerSeconds: 60,
+} as const;
+
+const DEFAULT_AUCTION_RULES = {
+  allowPassOnPlayer: false,
+  startingBidAmount: 30,
 } as const;
 
 const DEFAULT_SETTINGS = {
@@ -94,6 +99,17 @@ function loadSeedPlayers() {
   });
 }
 
+function isUnknownAuctionRuleColumnError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return (
+    error.message.includes("Unknown argument `allowPassOnPlayer`") ||
+    error.message.includes("Unknown argument `startingBidAmount`")
+  );
+}
+
 async function buildUniqueAuctionName(db: DbClient, baseName: string) {
   const existing = await db.auction.findMany({
     where: {
@@ -144,28 +160,61 @@ async function createFreshAuction(db: DbClient, input?: { name?: string }) {
     },
   });
 
-  const auction = await db.auction.create({
-    data: {
-      name: auctionName,
-      status: "READY",
-      phase: "SETUP",
-      turnType: "IDLE",
-      activeRoundNumber: 0,
-      currentTurnTeamId: null,
-      biddingNominationOrder: Prisma.JsonNull,
-      biddingPlayerDeadlineAt: null,
-      snakePickDeadlineAt: null,
-      pausedAt: null,
-      resumeAt: null,
-      biddingRoundSize: 3,
-      biddingTimerSeconds: DEFAULT_TIMERS.biddingTimerSeconds,
-      selectionTimerSeconds: DEFAULT_TIMERS.selectionTimerSeconds,
-      snakeTimerSeconds: DEFAULT_TIMERS.snakeTimerSeconds,
-      settings: {
-        create: DEFAULT_SETTINGS,
+  let auction: Awaited<ReturnType<typeof db.auction.create>>;
+
+  try {
+    auction = await db.auction.create({
+      data: {
+        name: auctionName,
+        status: "READY",
+        phase: "SETUP",
+        turnType: "IDLE",
+        activeRoundNumber: 0,
+        currentTurnTeamId: null,
+        biddingNominationOrder: Prisma.JsonNull,
+        biddingPlayerDeadlineAt: null,
+        snakePickDeadlineAt: null,
+        pausedAt: null,
+        resumeAt: null,
+        biddingRoundSize: 3,
+        biddingTimerSeconds: DEFAULT_TIMERS.biddingTimerSeconds,
+        selectionTimerSeconds: DEFAULT_TIMERS.selectionTimerSeconds,
+        snakeTimerSeconds: DEFAULT_TIMERS.snakeTimerSeconds,
+        allowPassOnPlayer: DEFAULT_AUCTION_RULES.allowPassOnPlayer,
+        startingBidAmount: DEFAULT_AUCTION_RULES.startingBidAmount,
+        settings: {
+          create: DEFAULT_SETTINGS,
+        },
       },
-    },
-  });
+    });
+  } catch (error) {
+    if (!isUnknownAuctionRuleColumnError(error)) {
+      throw error;
+    }
+
+    auction = await db.auction.create({
+      data: {
+        name: auctionName,
+        status: "READY",
+        phase: "SETUP",
+        turnType: "IDLE",
+        activeRoundNumber: 0,
+        currentTurnTeamId: null,
+        biddingNominationOrder: Prisma.JsonNull,
+        biddingPlayerDeadlineAt: null,
+        snakePickDeadlineAt: null,
+        pausedAt: null,
+        resumeAt: null,
+        biddingRoundSize: 3,
+        biddingTimerSeconds: DEFAULT_TIMERS.biddingTimerSeconds,
+        selectionTimerSeconds: DEFAULT_TIMERS.selectionTimerSeconds,
+        snakeTimerSeconds: DEFAULT_TIMERS.snakeTimerSeconds,
+        settings: {
+          create: DEFAULT_SETTINGS,
+        },
+      },
+    });
+  }
 
   if (players.length > 0) {
     await db.auctionPlayer.createMany({

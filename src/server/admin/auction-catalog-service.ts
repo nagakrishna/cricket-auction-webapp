@@ -1,6 +1,17 @@
 import { prisma } from "@/lib/db/prisma";
 import { getAuctionAdminData } from "@/server/admin/settings-service";
 
+function isUnknownAuctionRuleColumnError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return (
+    error.message.includes("Unknown argument `allowPassOnPlayer`") ||
+    error.message.includes("Unknown argument `startingBidAmount`")
+  );
+}
+
 async function buildUniqueAuctionName(baseName: string) {
   const existing = await prisma.auction.findMany({
     where: {
@@ -133,35 +144,75 @@ export async function createAuctionSeason(input: {
   });
 
   return prisma.$transaction(async (tx) => {
-    const auction = await tx.auction.create({
-      data: {
-        name: auctionName,
-        status: "DRAFT",
-        phase: "SETUP",
-        turnType: "IDLE",
-        biddingRoundSize: latestAuction.biddingRoundSize,
-        biddingTimerSeconds: latestAuction.biddingTimerSeconds,
-        selectionTimerSeconds: latestAuction.selectionTimerSeconds,
-        snakeTimerSeconds: latestAuction.snakeTimerSeconds,
-        settings: {
-          create: {
-            totalTeams: latestAuction.settings.totalTeams,
-            rosterSize: latestAuction.settings.rosterSize,
-            minBatsmen: latestAuction.settings.minBatsmen,
-            maxBatsmen: latestAuction.settings.maxBatsmen,
-            minBowlers: latestAuction.settings.minBowlers,
-            maxBowlers: latestAuction.settings.maxBowlers,
-            minAllRounders: latestAuction.settings.minAllRounders,
-            maxAllRounders: latestAuction.settings.maxAllRounders,
-            minWicketkeepers: latestAuction.settings.minWicketkeepers,
-            maxWicketkeepers: latestAuction.settings.maxWicketkeepers,
+    let auction: Awaited<ReturnType<typeof tx.auction.create>>;
+
+    try {
+      auction = await tx.auction.create({
+        data: {
+          name: auctionName,
+          status: "DRAFT",
+          phase: "SETUP",
+          turnType: "IDLE",
+          biddingRoundSize: latestAuction.biddingRoundSize,
+          biddingTimerSeconds: latestAuction.biddingTimerSeconds,
+          selectionTimerSeconds: latestAuction.selectionTimerSeconds,
+          snakeTimerSeconds: latestAuction.snakeTimerSeconds,
+          allowPassOnPlayer: latestAuction.allowPassOnPlayer,
+          startingBidAmount: latestAuction.startingBidAmount,
+          settings: {
+            create: {
+              totalTeams: latestAuction.settings.totalTeams,
+              rosterSize: latestAuction.settings.rosterSize,
+              minBatsmen: latestAuction.settings.minBatsmen,
+              maxBatsmen: latestAuction.settings.maxBatsmen,
+              minBowlers: latestAuction.settings.minBowlers,
+              maxBowlers: latestAuction.settings.maxBowlers,
+              minAllRounders: latestAuction.settings.minAllRounders,
+              maxAllRounders: latestAuction.settings.maxAllRounders,
+              minWicketkeepers: latestAuction.settings.minWicketkeepers,
+              maxWicketkeepers: latestAuction.settings.maxWicketkeepers,
+            },
           },
         },
-      },
-      include: {
-        settings: true,
-      },
-    });
+        include: {
+          settings: true,
+        },
+      });
+    } catch (error) {
+      if (!isUnknownAuctionRuleColumnError(error)) {
+        throw error;
+      }
+
+      auction = await tx.auction.create({
+        data: {
+          name: auctionName,
+          status: "DRAFT",
+          phase: "SETUP",
+          turnType: "IDLE",
+          biddingRoundSize: latestAuction.biddingRoundSize,
+          biddingTimerSeconds: latestAuction.biddingTimerSeconds,
+          selectionTimerSeconds: latestAuction.selectionTimerSeconds,
+          snakeTimerSeconds: latestAuction.snakeTimerSeconds,
+          settings: {
+            create: {
+              totalTeams: latestAuction.settings.totalTeams,
+              rosterSize: latestAuction.settings.rosterSize,
+              minBatsmen: latestAuction.settings.minBatsmen,
+              maxBatsmen: latestAuction.settings.maxBatsmen,
+              minBowlers: latestAuction.settings.minBowlers,
+              maxBowlers: latestAuction.settings.maxBowlers,
+              minAllRounders: latestAuction.settings.minAllRounders,
+              maxAllRounders: latestAuction.settings.maxAllRounders,
+              minWicketkeepers: latestAuction.settings.minWicketkeepers,
+              maxWicketkeepers: latestAuction.settings.maxWicketkeepers,
+            },
+          },
+        },
+        include: {
+          settings: true,
+        },
+      });
+    }
 
     if (players.length > 0) {
       await tx.auctionPlayer.createMany({

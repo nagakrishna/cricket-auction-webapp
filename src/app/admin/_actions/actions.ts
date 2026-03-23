@@ -16,7 +16,7 @@ import {
 import { createAuctionSeason } from "@/server/admin/auction-catalog-service";
 import { createInvite } from "@/server/invites/invite-service";
 import { createPlayer, importRankingCsv } from "@/server/players/player-service";
-import { updateAuctionSettings } from "@/server/admin/settings-service";
+import { getAuctionAdminData, updateAuctionSettings } from "@/server/admin/settings-service";
 import { runAdminReset } from "@/server/admin/reset-service";
 import {
   createTeam,
@@ -31,6 +31,21 @@ async function requireAdminUser() {
 
 function getNumberField(formData: FormData, key: string) {
   return Number(formData.get(key));
+}
+
+function getOptionalNumberField(formData: FormData, key: string) {
+  const value = formData.get(key);
+
+  if (value === null || value === "") {
+    return null;
+  }
+
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue : null;
+}
+
+function getBooleanField(formData: FormData, key: string) {
+  return formData.get(key) === "true";
 }
 
 function revalidateAdminPaths(...paths: string[]) {
@@ -254,11 +269,23 @@ export async function importCsvAction(formData: FormData) {
 
 export async function updateSettingsAction(formData: FormData) {
   await requireAdminUser();
+  const auction = await getAuctionAdminData();
+  const auctionPlayers = Math.max(3, getNumberField(formData, "auctionPlayers"));
+  const startingBidAmount =
+    getOptionalNumberField(formData, "startingBidAmount") ??
+    (auction.startingBidAmount ?? 30);
+  const allowPassOnPlayer =
+    formData.get("allowPassOnPlayer") === null
+      ? (auction.allowPassOnPlayer ?? false)
+      : getBooleanField(formData, "allowPassOnPlayer");
+
   await updateAuctionSettings({
     biddingTimerSeconds: getNumberField(formData, "biddingTimerSeconds"),
     selectionTimerSeconds: getNumberField(formData, "selectionTimerSeconds"),
     snakeTimerSeconds: getNumberField(formData, "snakeTimerSeconds"),
-    auctionPlayers: getNumberField(formData, "auctionPlayers"),
+    allowPassOnPlayer,
+    startingBidAmount,
+    auctionPlayers,
     totalTeams: getNumberField(formData, "totalTeams"),
     rosterSize: getNumberField(formData, "rosterSize"),
     minBatsmen: getNumberField(formData, "minBatsmen"),

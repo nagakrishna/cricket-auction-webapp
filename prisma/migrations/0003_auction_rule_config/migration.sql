@@ -1,0 +1,6 @@
+ALTER TABLE "Auction"
+ADD COLUMN "allowPassOnPlayer" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "startingBidAmount" INTEGER NOT NULL DEFAULT 30;
+
+ALTER TABLE "Auction"
+ALTER COLUMN "biddingTimerSeconds" SET DEFAULT 30;

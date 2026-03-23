@@ -32,7 +32,8 @@ export function BiddingPanel({
   statusMessage,
   currentTurnTeamName,
 }: BiddingPanelProps) {
-  const minimumNextBid = (snapshot.highestBid ?? 0) + 1;
+  const minimumNextBid =
+    snapshot.highestBid !== null ? snapshot.highestBid + 1 : snapshot.settings.startingBidAmount;
   const biddingStateMessage =
     snapshot.turnType === "MANUAL_RESOLUTION"
       ? snapshot.manualReason ?? "Bidding is waiting for admin intervention."
@@ -41,13 +42,13 @@ export function BiddingPanel({
           ? `Waiting for ${currentTurnTeamName} to nominate a player for auction.`
           : "Waiting for a team to nominate the next player."
       : snapshot.turnType === "BIDDING" && isWinningBidTeam
-        ? "You are winning."
+        ? "You placed the latest accepted bid and cannot bid again until another team bids."
         : snapshot.turnType === "BIDDING" && hasPassed
           ? "You passed on this player auction."
       : snapshot.turnType === "BIDDING" && snapshot.highestBidTeamId && !isWinningBidTeam
           ? "You have been outbid."
           : snapshot.turnType === "BIDDING"
-            ? `Bids are final, unique, and must be higher than ${snapshot.highestBid ?? 0}.`
+            ? `Bids are final, unique, and must be higher than ${snapshot.highestBid ?? snapshot.settings.startingBidAmount - 1}.`
             : "Bidding is not open right now.";
   const showWinningBanner =
     snapshot.turnType === "BIDDING" &&
@@ -179,21 +180,23 @@ export function BiddingPanel({
         >
           Submit bid
         </button>
-        <div className="grid gap-2">
-          <button
-            className="rounded-2xl border border-amber-300 bg-[linear-gradient(135deg,rgba(255,251,235,1),rgba(254,243,199,0.92))] px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:border-amber-400 hover:bg-amber-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
-            disabled={!canPass}
-            onClick={onPass}
-            type="button"
-          >
-            {hasPassed ? "Passed" : "Pass on player"}
-          </button>
-          {canPass ? (
-            <p className="max-w-xs text-xs font-semibold leading-5 text-amber-900">
-              Passing means your team can no longer participate in this player auction during the current round.
-            </p>
-          ) : null}
-        </div>
+        {snapshot.settings.allowPassOnPlayer ? (
+          <div className="grid gap-2">
+            <button
+              className="rounded-2xl border border-amber-300 bg-[linear-gradient(135deg,rgba(255,251,235,1),rgba(254,243,199,0.92))] px-5 py-3 text-sm font-semibold text-amber-900 shadow-sm transition hover:border-amber-400 hover:bg-amber-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
+              disabled={!canPass}
+              onClick={onPass}
+              type="button"
+            >
+              {hasPassed ? "Passed" : "Pass on player"}
+            </button>
+            {canPass ? (
+              <p className="max-w-xs text-xs font-semibold leading-5 text-amber-900">
+                Passing means your team can no longer participate in this player auction during the current round.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
       <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
         Minimum valid bid right now: {minimumNextBid}

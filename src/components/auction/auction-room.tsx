@@ -42,7 +42,9 @@ export function AuctionRoom({
   );
   const liveActionsEnabled = snapshot.status === "LIVE";
   const [bidAmount, setBidAmount] = useState(
-    initialSnapshot.highestBid ? initialSnapshot.highestBid + 1 : 1,
+    initialSnapshot.highestBid
+      ? initialSnapshot.highestBid + 1
+      : initialSnapshot.settings.startingBidAmount + 1,
   );
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
@@ -75,9 +77,11 @@ export function AuctionRoom({
   const canBid =
     liveActionsEnabled &&
     snapshot.turnType === "BIDDING" &&
-    (team?.biddingWins ?? 0) < 3 &&
+    (team?.biddingWins ?? 0) < snapshot.settings.auctionPlayers &&
+    !isWinningBidTeam &&
     !hasPassed;
   const canPass =
+    snapshot.settings.allowPassOnPlayer &&
     canBid &&
     !hasPassed &&
     !isWinningBidTeam &&
@@ -259,6 +263,14 @@ export function AuctionRoom({
       await refreshSnapshot();
     }
   }
+
+  useEffect(() => {
+    setBidAmount(
+      snapshot.highestBid
+        ? snapshot.highestBid + 1
+        : snapshot.settings.startingBidAmount + 1,
+    );
+  }, [snapshot.activeRoundId, snapshot.highestBid, snapshot.settings.startingBidAmount]);
 
   useEffect(() => {
     if (snapshot.phase !== "COMPLETE") {

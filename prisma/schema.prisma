@@ -190,9 +190,11 @@ model Auction {
   pausedAt                DateTime?
   resumeAt                DateTime?
   biddingRoundSize        Int             @default(3)
-  biddingTimerSeconds     Int             @default(60)
+  biddingTimerSeconds     Int             @default(30)
   selectionTimerSeconds   Int             @default(60)
   snakeTimerSeconds       Int             @default(60)
+  allowPassOnPlayer       Boolean         @default(false)
+  startingBidAmount       Int             @default(30)
   createdAt               DateTime        @default(now())
   updatedAt               DateTime        @updatedAt
   settings                AuctionSettings?

@@ -24,6 +24,8 @@ export const auctionSettingsSchema = z.object({
   biddingTimerSeconds: z.number().int().min(10).max(300),
   selectionTimerSeconds: z.number().int().min(10).max(300),
   snakeTimerSeconds: z.number().int().min(10).max(300),
+  allowPassOnPlayer: z.boolean(),
+  startingBidAmount: z.number().int().min(1).max(5000),
   auctionPlayers: z.number().int().min(3).max(50),
   totalTeams: z.number().int().min(2).max(20),
   rosterSize: z.number().int().min(8).max(20),

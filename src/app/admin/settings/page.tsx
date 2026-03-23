@@ -10,7 +10,8 @@ export default async function SettingsPage() {
     ["biddingTimerSeconds", "Bidding timer (seconds)", auction.biddingTimerSeconds, 10, 300],
     ["selectionTimerSeconds", "Nomination timer (seconds)", auction.selectionTimerSeconds, 10, 300],
     ["snakeTimerSeconds", "Snake timer (seconds)", auction.snakeTimerSeconds, 10, 300],
-    ["auctionPlayers", "Bidding picks per team", auction.biddingRoundSize, 1, 50],
+    ["startingBidAmount", "Starting bid amount", auction.startingBidAmount ?? 30, 1, 5000],
+    ["auctionPlayers", "Bidding picks per team", Math.max(3, auction.biddingRoundSize), 3, 50],
     ["totalTeams", "Total teams", settings.totalTeams, 2, 20],
     ["rosterSize", "Roster size", settings.rosterSize, 8, 20],
     ["minBatsmen", "Min batsmen", settings.minBatsmen, 0, 12],
@@ -26,6 +27,17 @@ export default async function SettingsPage() {
   return (
     <Panel title="Auction settings" eyebrow="Rules">
       <form action={updateSettingsAction} className="grid gap-4 md:grid-cols-2">
+        <label className="grid gap-2 text-sm font-medium text-slate-700 md:col-span-2">
+          <span className="flex items-center gap-3">
+            <input
+              defaultChecked={auction.allowPassOnPlayer ?? false}
+              name="allowPassOnPlayer"
+              type="checkbox"
+              value="true"
+            />
+            Allow pass on player during bidding
+          </span>
+        </label>
         {fields.map(([name, label, value, min, max]) => (
           <label key={name} className="grid gap-2 text-sm font-medium text-slate-700">
             {label}

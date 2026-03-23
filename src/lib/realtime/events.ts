@@ -98,6 +98,8 @@ export type AuctionSnapshot = {
     biddingTimerSeconds: number;
     selectionTimerSeconds: number;
     snakeTimerSeconds: number;
+    allowPassOnPlayer: boolean;
+    startingBidAmount: number;
     minBatsmen: number;
     maxBatsmen: number;
     minBowlers: number;
