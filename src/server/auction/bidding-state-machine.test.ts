@@ -7,7 +7,7 @@ import {
   getBiddingEngineState,
   getHighestAcceptedBid,
 } from "@/server/auction/bidding-state-machine";
-import { getExpiredAuctionTimerAction } from "@/server/auction/timer-rules";
+import { getExpiredAuctionTimerAction, shiftDeadlineAfterPause } from "@/server/auction/timer-rules";
 
 test("maps paused auctions to an idle bidding state", () => {
   assert.equal(
@@ -104,4 +104,25 @@ test("routes bidding nomination timeout into admin intervention handling", () =>
   });
 
   assert.equal(action, "BIDDING_NOMINATION");
+});
+
+test("shifts an active deadline forward by the paused duration on resume", () => {
+  const shifted = shiftDeadlineAfterPause(
+    new Date("2026-03-29T12:01:00.000Z"),
+    new Date("2026-03-29T12:00:15.000Z"),
+    new Date("2026-03-29T12:05:15.000Z"),
+  );
+
+  assert.equal(shifted?.toISOString(), "2026-03-29T12:06:00.000Z");
+});
+
+test("resumes an already-expired deadline at the current time", () => {
+  const resumedAt = new Date("2026-03-29T12:05:15.000Z");
+  const shifted = shiftDeadlineAfterPause(
+    new Date("2026-03-29T12:00:10.000Z"),
+    new Date("2026-03-29T12:00:15.000Z"),
+    resumedAt,
+  );
+
+  assert.equal(shifted?.toISOString(), resumedAt.toISOString());
 });

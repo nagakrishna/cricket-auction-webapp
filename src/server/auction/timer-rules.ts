@@ -6,6 +6,24 @@ export type ExpiredAuctionTimerAction =
   | "SNAKE_PICK"
   | null;
 
+export function shiftDeadlineAfterPause(
+  deadlineAt: Date | null,
+  pausedAt: Date | null,
+  resumedAt: Date,
+) {
+  if (!deadlineAt || !pausedAt) {
+    return deadlineAt;
+  }
+
+  const remainingMs = deadlineAt.getTime() - pausedAt.getTime();
+
+  if (remainingMs <= 0) {
+    return new Date(resumedAt);
+  }
+
+  return new Date(resumedAt.getTime() + remainingMs);
+}
+
 type ExpiredTimerInput = {
   turnType: TurnType;
   bidDeadlineAt: Date | null;

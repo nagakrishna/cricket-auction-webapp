@@ -34,7 +34,7 @@ import {
   shuffleTeamOrder,
 } from "@/server/auction/snake-draft-engine";
 import { selectParticipatingTeams } from "@/server/teams/team-service";
-import { getExpiredAuctionTimerAction } from "@/server/auction/timer-rules";
+import { getExpiredAuctionTimerAction, shiftDeadlineAfterPause } from "@/server/auction/timer-rules";
 import { writeAuditLog } from "@/server/logs/audit-log";
 
 type DbClient = PrismaClient | Prisma.TransactionClient;
@@ -1453,12 +1453,58 @@ export async function resumeAuction(actorId: string) {
   await prisma.$transaction(async (tx) => {
     const auction = await getAuctionOrThrow(tx);
     auctionId = auction.id;
+    const resumedAt = new Date();
+    const activeRound =
+      auction.activeRoundNumber > 0
+        ? await tx.auctionRound.findUnique({
+            where: {
+              auctionId_roundNumber: {
+                auctionId: auction.id,
+                roundNumber: auction.activeRoundNumber,
+              },
+            },
+            select: {
+              id: true,
+              bidDeadlineAt: true,
+              selectionDeadlineAt: true,
+            },
+          })
+        : null;
+
+    if (activeRound) {
+      await tx.auctionRound.update({
+        where: { id: activeRound.id },
+        data: {
+          bidDeadlineAt: shiftDeadlineAfterPause(
+            activeRound.bidDeadlineAt,
+            auction.pausedAt,
+            resumedAt,
+          ),
+          selectionDeadlineAt: shiftDeadlineAfterPause(
+            activeRound.selectionDeadlineAt,
+            auction.pausedAt,
+            resumedAt,
+          ),
+        },
+      });
+    }
+
     await tx.auction.update({
       where: { id: auction.id },
       data: {
         status: "LIVE",
         pausedAt: null,
-        resumeAt: new Date(),
+        resumeAt: resumedAt,
+        biddingPlayerDeadlineAt: shiftDeadlineAfterPause(
+          auction.biddingPlayerDeadlineAt,
+          auction.pausedAt,
+          resumedAt,
+        ),
+        snakePickDeadlineAt: shiftDeadlineAfterPause(
+          auction.snakePickDeadlineAt,
+          auction.pausedAt,
+          resumedAt,
+        ),
       },
     });
 
@@ -2831,6 +2877,10 @@ async function processExpiredTimersForAuction(
   auction: AuctionWithSettings,
   options: { broadcast?: boolean } = {},
 ) {
+  if (auction.status !== "LIVE") {
+    return false;
+  }
+
   const shouldBroadcast = options.broadcast ?? true;
   const activeRound = await prisma.auctionRound.findUnique({
     where: {
