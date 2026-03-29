@@ -22,7 +22,9 @@ export default async function OwnerLayout({
                 <span className="text-xs font-semibold uppercase tracking-[0.18em] text-turf">
                   Signed in
                 </span>
-                <span className="font-semibold text-ink">{user.displayName}</span>
+                <span className="font-semibold uppercase tracking-[0.08em] text-ink">
+                  {user.displayName}
+                </span>
               </div>
               <form action="/logout" method="POST">
                 <button

@@ -14,7 +14,7 @@ export default async function AdminLayout({
       description={
         <span className="flex flex-col gap-3">
           <span className="inline-flex w-fit items-center rounded-full bg-[linear-gradient(135deg,#081420,#17334a)] px-4 py-2 text-sm font-bold text-white shadow-[0_12px_24px_rgba(8,20,32,0.16)]">
-            Signed in as {user.displayName}
+            Signed in as <span className="ml-1 uppercase tracking-[0.08em]">{user.displayName}</span>
           </span>
           <span>
             Manage setup, control the live auction, and handle interventions from one place.
